@@ -6,7 +6,10 @@ use concrete_core::{
         crypto::ggsw::{external_product, external_product_scratch, FourierGgswCiphertext},
         math::fft::Fft,
     },
-    commons::{crypto::glwe::GlweCiphertext, math::torus::UnsignedTorus},
+    commons::{
+        crypto::glwe::GlweCiphertext,
+        math::{tensor::AsMutTensor, torus::UnsignedTorus},
+    },
     prelude::{
         DecompositionBaseLog, DecompositionLevelCount, GlweDimension, PolynomialSize, Variance, *,
     },
@@ -63,9 +66,9 @@ fn external_product_bench<Scalar: UnsignedTorus>(n: usize, a: f64, b: Scalar) {
     println!("{:?}", &ggsw);
     println!("{:?}", &glwe);
 }
-fn main() {
-    external_product_bench::<u64>(16, 5., 17);
-}
+// fn main() {
+//     external_product_bench::<u64>(16, 5., 17);
+// }
 
 // fn main() {
 //     let mut fft_engine = FftEngine::new(()).unwrap();
@@ -225,3 +228,171 @@ fn main() {
 //     println!("{:?}", out);
 //     println!("{:?}", c64::default());
 // }
+
+fn works() {
+    let mut fft_engine = FftEngine::new(()).unwrap();
+
+    let raw_input = vec![3_u64 << 59; 64];
+    let noise = Variance(2_f64.powf(-104.));
+    const UNSAFE_SECRET: u128 = 0;
+    let mut engine = DefaultEngine::new(Box::new(UnixSeeder::new(UNSAFE_SECRET))).unwrap();
+    let plaintext_vector: PlaintextVector64 =
+        engine.create_plaintext_vector_from(&raw_input).unwrap();
+    let ggsw_pt: Plaintext64 = engine.create_plaintext_from(&1).unwrap();
+    let key: GlweSecretKey64 = engine
+        .generate_new_glwe_secret_key(GlweDimension(2), PolynomialSize(64))
+        .unwrap();
+
+    let B = DecompositionBaseLog(2);
+    let ell = DecompositionLevelCount(12);
+    let c: GgswCiphertext64 = engine
+        .encrypt_scalar_ggsw_ciphertext(&key, &ggsw_pt, noise, ell, B)
+        .unwrap();
+    let complex_c: FftFourierGgswCiphertext64 = fft_engine.convert_ggsw_ciphertext(&c).unwrap();
+    let ct = engine
+        .encrypt_glwe_ciphertext(&key, &plaintext_vector, noise)
+        .unwrap();
+    let mut ct_out = engine.zero_encrypt_glwe_ciphertext(&key, noise).unwrap();
+    fft_engine.discard_compute_external_product_glwe_ciphertext_ggsw_ciphertext(
+        &ct,
+        &complex_c,
+        &mut ct_out,
+    );
+    let dec = engine.decrypt_glwe_ciphertext(&key, &ct_out);
+
+    println!("output ct: {:?}", ct_out);
+    println!("output ct: {:?}", dec);
+
+    let x: Vec<u64> = vec![
+        1729378958375949598,
+        1729380057886768378,
+        1729380057887644426,
+        1729378958375847111,
+        1729380057888629210,
+        1729378958376659076,
+        1729383356422939005,
+        1729378958375386024,
+        1729378958376652936,
+        1729381157399650297,
+        1729384455935327563,
+        1729382256911128108,
+        1729378958376850097,
+        1729380057888432965,
+        1729382256910885101,
+        1729381157399766807,
+        1729381157398525461,
+        1729383356424247485,
+        1729383356423216345,
+        1729382256912855713,
+        1729381157399000073,
+        1729381157400197897,
+        1729382256910299807,
+        1729381157400660629,
+        1729382256910985485,
+        1729380057889847560,
+        1729383356422850082,
+        1729380057888263549,
+        1729378958375634604,
+        1729376759351999320,
+        1729380057887772971,
+        1729380057888325504,
+        1729381157399783687,
+        1729381157398409517,
+        1729377858864206087,
+        1729377858863795599,
+        1729378958374368640,
+        1729382256910091995,
+        1729382256910727563,
+        1729381157399750981,
+        1729382256910216817,
+        1729378958375087114,
+        1729378958375416166,
+        1729377858864480058,
+        1729381157399525981,
+        1729381157399760382,
+        1729384455933772705,
+        1729384455934303384,
+        1729381157398539262,
+        1729381157400672047,
+        1729382256911257189,
+        1729381157399508306,
+        1729382256911276553,
+        1729382256911790042,
+        1729384455934253704,
+        1729382256910511850,
+        1729386654957500872,
+        1729384455935110492,
+        1729387754468723540,
+        1729384455934066602,
+        1729381157399902079,
+        1729384455932510163,
+        1729385555445098613,
+        1729385555444978095,
+    ];
+    for i in x {
+        print!("{:?}, ", (i as f64) / (1u128 << 59) as f64);
+    }
+}
+
+fn main() {
+    let B = DecompositionBaseLog(2);
+    let ell = DecompositionLevelCount(12);
+    let noise = Variance(2_f64.powf(-104.));
+    const UNSAFE_SECRET: u128 = 0;
+    let mut engine = DefaultEngine::new(Box::new(UnixSeeder::new(UNSAFE_SECRET))).unwrap();
+    let mut fft_engine = FftEngine::new(()).unwrap();
+
+    let key: GlweSecretKey64 = engine
+        .generate_new_glwe_secret_key(GlweDimension(2), PolynomialSize(64))
+        .unwrap();
+
+    let ggsw_pt1: Plaintext64 = engine.create_plaintext_from(&1).unwrap();
+    let c1: GgswCiphertext64 = engine
+        .encrypt_scalar_ggsw_ciphertext(&key, &ggsw_pt1, noise, ell, B)
+        .unwrap();
+
+    let ggsw_pt2: Plaintext64 = engine.create_plaintext_from(&1).unwrap();
+    let mut c2: GgswCiphertext64 = engine
+        .encrypt_scalar_ggsw_ciphertext(&key, &ggsw_pt2, noise, ell, B)
+        .unwrap();
+
+    let complex_c: FftFourierGgswCiphertext64 = fft_engine.convert_ggsw_ciphertext(&c1).unwrap();
+
+    let ggsw_pt3: Plaintext64 = engine.create_plaintext_from(&1).unwrap();
+
+    let mut c3: GgswCiphertext64 = engine
+        .encrypt_scalar_ggsw_ciphertext(&key, &ggsw_pt3, noise, ell, B)
+        .unwrap();
+
+    // let mut list = c2.0.as_mut_glwe_list().ciphertext_iter_mut().enumerate();
+    let list2 =
+        c2.0.as_mut_tensor()
+            .as_mut_container()
+            .into_iter()
+            .enumerate();
+
+    let mut aux = vec![engine.zero_encrypt_glwe_ciphertext(&key, noise).unwrap(); list2.len()];
+    //let tmp = c3.0.as_mut_glwe_list().ciphertext_iter_mut().nth();
+    //tmp.
+    for (i, val) in list2 {
+        let owned_container = vec![val.clone(); GlweSize(2).0 * PolynomialSize(64).0];
+
+        let ciphertext: GlweCiphertext64 = engine
+            .create_glwe_ciphertext_from(owned_container, PolynomialSize(64))
+            .unwrap();
+
+        println!("{:?}", &ciphertext.polynomial_size());
+        println!("{:?}", &complex_c.polynomial_size());
+        println!("{:?}", &mut aux[i].polynomial_size());
+
+        fft_engine
+            .discard_compute_external_product_glwe_ciphertext_ggsw_ciphertext(
+                &ciphertext,
+                &complex_c,
+                &mut aux[i],
+            )
+            .unwrap();
+    }
+
+    println!("{:?}", &aux);
+}

@@ -22,7 +22,7 @@ concrete-core = { version = "1.0.1", features = ["aarch64", "__private_docs"] }
 aligned-vec = "0.5"
 concrete-csprng = "0.2.1"
 dyn-stack = "0.8"
-rand = "0.7"
+rand = "0.8.5"
 
 [dev-dependencies]
 criterion = "0.4.0"
