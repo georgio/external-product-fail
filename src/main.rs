@@ -337,13 +337,16 @@ fn works() {
 fn main() {
     let B = DecompositionBaseLog(2);
     let ell = DecompositionLevelCount(12);
+    let poly_size = PolynomialSize(64);
+    let glwe_dimension = GlweDimension(2);
+
     let noise = Variance(2_f64.powf(-104.));
     const UNSAFE_SECRET: u128 = 0;
     let mut engine = DefaultEngine::new(Box::new(UnixSeeder::new(UNSAFE_SECRET))).unwrap();
     let mut fft_engine = FftEngine::new(()).unwrap();
 
     let key: GlweSecretKey64 = engine
-        .generate_new_glwe_secret_key(GlweDimension(2), PolynomialSize(64))
+        .generate_new_glwe_secret_key(glwe_dimension, poly_size)
         .unwrap();
 
     let ggsw_pt1: Plaintext64 = engine.create_plaintext_from(&1).unwrap();
@@ -375,15 +378,11 @@ fn main() {
     //let tmp = c3.0.as_mut_glwe_list().ciphertext_iter_mut().nth();
     //tmp.
     for (i, val) in list2 {
-        let owned_container = vec![val.clone(); GlweSize(2).0 * PolynomialSize(64).0];
+        let owned_container = vec![val.clone(); (glwe_dimension.0 + 1) * poly_size.0];
 
         let ciphertext: GlweCiphertext64 = engine
-            .create_glwe_ciphertext_from(owned_container, PolynomialSize(64))
+            .create_glwe_ciphertext_from(owned_container, poly_size)
             .unwrap();
-
-        println!("{:?}", &ciphertext.polynomial_size());
-        println!("{:?}", &complex_c.polynomial_size());
-        println!("{:?}", &mut aux[i].polynomial_size());
 
         fft_engine
             .discard_compute_external_product_glwe_ciphertext_ggsw_ciphertext(
