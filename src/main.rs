@@ -65,9 +65,9 @@ fn external_product_bench<Scalar: UnsignedTorus>(n: usize, a: f64, b: Scalar) {
         fft,
         stack.rb_mut(),
     );
-    println!("{:?}", out.as_view());
-    println!("{:?}", &ggsw);
-    println!("{:?}", &glwe);
+    //println!("{:?}", out.as_view());
+    //println!("{:?}", &ggsw);
+    //println!("{:?}", &glwe);
 }
 // fn main() {
 //     external_product_bench::<u64>(16, 5., 17);
@@ -103,7 +103,7 @@ fn external_product_bench<Scalar: UnsignedTorus>(n: usize, a: f64, b: Scalar) {
 //     );
 //     // c.external_product();
 
-//     println!("Hello, world!");
+////     println!("Hello, world!");
 // }
 // fn main() -> Result<(), Box<dyn Error>> {
 //     // DISCLAIMER: the parameters used here are only for test purpose, and are not secure.
@@ -170,9 +170,9 @@ fn external_product_bench<Scalar: UnsignedTorus>(n: usize, a: f64, b: Scalar) {
 //     )?;
 
 //     let dec = default_engine.decrypt_glwe_ciphertext(&key, &product)?;
-//     println!("{:?}", dec.plaintext_count());
+////     println!("{:?}", dec.plaintext_count());
 //     let clear = default_engine.decode_plaintext_vector(&encoder_vector, &dec);
-//     println!("{:?}", &clear);
+////     println!("{:?}", &clear);
 
 //     // let dec3 = default_engine.retrieve_cleartext_vector(&dec);
 //     assert_eq!(complex_ggsw.glwe_dimension(), glwe_dimension);
@@ -228,8 +228,8 @@ fn external_product_bench<Scalar: UnsignedTorus>(n: usize, a: f64, b: Scalar) {
 //         fft,
 //         stack.rb_mut(),
 //     );
-//     println!("{:?}", out);
-//     println!("{:?}", c64::default());
+////     println!("{:?}", out);
+////     println!("{:?}", c64::default());
 // }
 
 fn works() {
@@ -263,8 +263,8 @@ fn works() {
     );
     let dec = engine.decrypt_glwe_ciphertext(&key, &ct_out);
 
-    println!("output ct: {:?}", ct_out);
-    println!("output ct: {:?}", dec);
+    //println!("output ct: {:?}", ct_out);
+    //println!("output ct: {:?}", dec);
 
     let x: Vec<u64> = vec![
         1729378958375949598,
@@ -340,7 +340,7 @@ fn works() {
 fn main() {
     let B = DecompositionBaseLog(2);
     let ell = DecompositionLevelCount(12);
-    let poly_size = PolynomialSize(32);
+    let poly_size = PolynomialSize(64);
     let glwe_dimension = GlweDimension(2);
 
     let noise = Variance(2_f64.powf(-104.));
@@ -372,8 +372,7 @@ fn main() {
             .enumerate();
 
     let mut aux = vec![engine.zero_encrypt_glwe_ciphertext(&key, noise).unwrap(); list2.len()];
-    //let tmp = c3.0.as_mut_glwe_list().ciphertext_iter_mut().nth();
-    //tmp.
+
     for (i, val) in list2 {
         let owned_container = vec![val.clone(); (glwe_dimension.0 + 1) * poly_size.0];
 
@@ -390,16 +389,12 @@ fn main() {
             .unwrap();
     }
 
-    println!("{:?}", &aux);
-
     let ggsw_pt3: Plaintext64 = engine.create_plaintext_from(&1).unwrap();
 
     let mut c3: GgswCiphertext64 = engine
         .encrypt_scalar_ggsw_ciphertext(&key, &ggsw_pt3, noise, ell, B)
         .unwrap();
 
-    println!("test1");
-    println!("{:?}", &c3);
     for (i, mut it) in c3.0.as_mut_glwe_list().ciphertext_iter_mut().enumerate() {
         let aux_container_i = engine
             .consume_retrieve_glwe_ciphertext(aux[i].clone())
@@ -413,9 +408,98 @@ fn main() {
             .fill_with_copy(&tensor);
     }
 
-    println!("test2");
-    println!("{:?}", &c3);
+    let last_row_x = c3.0.as_mut_glwe_list();
+    let last_row = last_row_x.ciphertext_iter().last().unwrap();
 
-    // c3 is ggsw not glwe, what next?
-    // let dec = engine.decrypt_glwe_ciphertext(&key, &c3);
+    let mut raw_buffer = last_row.as_polynomial_list().into_container();
+
+    let mut view: GlweCiphertextView64 = engine
+        .create_glwe_ciphertext_from(raw_buffer, poly_size)
+        .unwrap();
+
+    let mut serialization_engine = DefaultSerializationEngine::new(()).unwrap();
+    let serialized = serialization_engine.serialize(&view).unwrap();
+
+    let recovered: GlweCiphertext64 = serialization_engine
+        .deserialize(serialized.as_slice())
+        .unwrap();
+
+    let decryption = engine.decrypt_glwe_ciphertext(&key, &recovered).unwrap();
+
+    println!("{:?}", decryption);
+
+    let decr: Vec<u64> = vec![
+        2699142716511241179,
+        6211033433161973302,
+        6211033433162992712,
+        9722924149814508854,
+        13234814866464732886,
+        16746705583116515478,
+        16746705583116799320,
+        16746705583117453807,
+        5323742942709315663,
+        8835633659360882925,
+        8835633659361043085,
+        12347524376013010962,
+        15859415092663636480,
+        924561735605533248,
+        4436452452257990462,
+        11460233885560666859,
+        14972124602211266426,
+        3549161961805004012,
+        3549161961805760812,
+        7061052678457438183,
+        10572943395107838715,
+        14084834111760359345,
+        2661871471353888435,
+        9685652904656042691,
+        13197543621307007728,
+        1774580980900647642,
+        5286471697552884833,
+        8798362414204275828,
+        12310253130855377965,
+        15822143847508267529,
+        887290490450448905,
+        4399181207100519716,
+        7911071923752402644,
+        11422962640404771378,
+        18446744073707766252,
+        3511890716649540299,
+        7023781433300359539,
+        10535672149952810841,
+        14047562866604963539,
+        17559453583255131209,
+        6136490942849593811,
+        9648381659501220577,
+        13160272376152488092,
+        16672163092804092536,
+        5249200452396693598,
+        12272981885700905938,
+        15784872602353314266,
+        4361909961945842699,
+        7873800678597908364,
+        14897582111901691204,
+        14897582111900735083,
+        3474619471494745714,
+        6986510188146014668,
+        10498400904798066805,
+        17522182338101193875,
+        2587328981042569365,
+        2587328981042706431,
+        6099219697695455464,
+        6099219697695114978,
+        9611110414345579444,
+        9611110414346778695,
+        16634891847650074306,
+        5211929207243544111,
+        12235710640546351073,
+    ];
+    for x in decr.clone() {
+        print!("{:?}, ", (x as f64) / (1u128 << 52) as f64);
+    }
+
+    println!("\n\n\n");
+    for x in decr {
+        print!("{:?}, ", (x as f64) / (1u128 << 64) as f64);
+    }
 }
