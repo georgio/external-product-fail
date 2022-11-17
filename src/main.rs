@@ -8,7 +8,10 @@ use concrete_core::{
     },
     commons::{
         crypto::glwe::GlweCiphertext,
-        math::{tensor::AsMutTensor, torus::UnsignedTorus},
+        math::{
+            tensor::{AsMutTensor, Tensor},
+            torus::UnsignedTorus,
+        },
     },
     prelude::{
         DecompositionBaseLog, DecompositionLevelCount, GlweDimension, PolynomialSize, Variance, *,
@@ -337,7 +340,7 @@ fn works() {
 fn main() {
     let B = DecompositionBaseLog(2);
     let ell = DecompositionLevelCount(12);
-    let poly_size = PolynomialSize(64);
+    let poly_size = PolynomialSize(32);
     let glwe_dimension = GlweDimension(2);
 
     let noise = Variance(2_f64.powf(-104.));
@@ -360,12 +363,6 @@ fn main() {
         .unwrap();
 
     let complex_c: FftFourierGgswCiphertext64 = fft_engine.convert_ggsw_ciphertext(&c1).unwrap();
-
-    let ggsw_pt3: Plaintext64 = engine.create_plaintext_from(&1).unwrap();
-
-    let mut c3: GgswCiphertext64 = engine
-        .encrypt_scalar_ggsw_ciphertext(&key, &ggsw_pt3, noise, ell, B)
-        .unwrap();
 
     // let mut list = c2.0.as_mut_glwe_list().ciphertext_iter_mut().enumerate();
     let list2 =
@@ -394,4 +391,31 @@ fn main() {
     }
 
     println!("{:?}", &aux);
+
+    let ggsw_pt3: Plaintext64 = engine.create_plaintext_from(&1).unwrap();
+
+    let mut c3: GgswCiphertext64 = engine
+        .encrypt_scalar_ggsw_ciphertext(&key, &ggsw_pt3, noise, ell, B)
+        .unwrap();
+
+    println!("test1");
+    println!("{:?}", &c3);
+    for (i, mut it) in c3.0.as_mut_glwe_list().ciphertext_iter_mut().enumerate() {
+        let aux_container_i = engine
+            .consume_retrieve_glwe_ciphertext(aux[i].clone())
+            .unwrap();
+
+        let mut tensor = Tensor::allocate(0u64, aux_container_i.len());
+        tensor.as_mut_container().clone_from(&aux_container_i);
+
+        it.as_mut_polynomial_list()
+            .as_mut_tensor()
+            .fill_with_copy(&tensor);
+    }
+
+    println!("test2");
+    println!("{:?}", &c3);
+
+    // c3 is ggsw not glwe, what next?
+    // let dec = engine.decrypt_glwe_ciphertext(&key, &c3);
 }
