@@ -261,7 +261,7 @@ fn works() {
         &complex_c,
         &mut ct_out,
     );
-    let dec = engine.decrypt_glwe_ciphertext(&key, &ct_out);
+    let _dec = engine.decrypt_glwe_ciphertext(&key, &ct_out);
 
     //println!("output ct: {:?}", ct_out);
     //println!("output ct: {:?}", dec);
@@ -411,9 +411,9 @@ fn main() {
     let last_row_x = c3.0.as_mut_glwe_list();
     let last_row = last_row_x.ciphertext_iter().last().unwrap();
 
-    let mut raw_buffer = last_row.as_polynomial_list().into_container();
+    let raw_buffer = last_row.as_polynomial_list().into_container();
 
-    let mut view: GlweCiphertextView64 = engine
+    let view: GlweCiphertextView64 = engine
         .create_glwe_ciphertext_from(raw_buffer, poly_size)
         .unwrap();
 
